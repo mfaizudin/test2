@@ -1,89 +1,44 @@
 package com.example.demo.controllers;
 
-import java.util.List;
-import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.models.User;
-import com.example.demo.models.UserRepository;
+import com.example.demo.services.ContactService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+@RestController
+@RequestMapping("/api")
+public class UsersController {
 
-@Controller
-public class UsersController {  
-    
     @Autowired
-    private UserRepository userRepo;
+    private ContactService contactService;
 
-    @GetMapping("/users/view")
-    public String getAllUsers(Model model){
-        System.out.println("Getting all users");
-        // get all users from database
-        List<User> users = userRepo.findAll();
-        // end of database call
-        model.addAttribute("us", users);
-        return "users/showAll";
-    }
+    @RequestMapping(method = RequestMethod.GET, value = "/contacts")
+    public ResponseEntity<?> displayContacts() {
 
-    @GetMapping("/")
-    public RedirectView process(){
-        return new RedirectView("login");
-    }
+        try {
 
-    @PostMapping("/users/add")
-    public String addUser(@RequestParam Map<String, String> newuser, HttpServletResponse response){
-        System.out.println("ADD user");
-        String newName = newuser.get("name");
-        String newPwd = newuser.get("password");
-        int newSize = Integer.parseInt(newuser.get("size"));
-        userRepo.save(new User(newName,newPwd,newSize));
-        response.setStatus(201);
-        return "users/addedUser";
-    }
+            LinkedHashMap<String, Object> status = new LinkedHashMap<>();
+            status.put("code", "200");
+            status.put("message", "Successful retrieval for contacts");
 
-    @GetMapping("/login")
-    public String getLogin(Model model, HttpServletRequest request, HttpSession session){
-        User user = (User) session.getAttribute("session_user");
-        if (user == null){
-            return "users/login";
+            LinkedHashMap<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("status", status);
+            response.put("data", contactService.getAllContacts());
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
-        else {
-            model.addAttribute("user",user);
-            return "users/protected";
-        }
+        
     }
-
-    @PostMapping("/login")
-    public String login(@RequestParam Map<String,String> formData, Model model, HttpServletRequest request, HttpSession session){
-        // processing login
-        String name = formData.get("name");
-        String pwd = formData.get("password");
-        List<User> userlist = userRepo.findByNameAndPassword(name, pwd);
-        if (userlist.isEmpty()){
-            return "users/login";
-        }
-        else {
-            // success
-            User user = userlist.get(0);
-            request.getSession().setAttribute("session_user", user);
-            model.addAttribute("user", user);
-            return "users/protected";
-        }
-    }
-
-    @GetMapping("/logout")
-    public String destroySession(HttpServletRequest request){
-        request.getSession().invalidate();
-        return "/users/login";
-    }
-
+    
 }
